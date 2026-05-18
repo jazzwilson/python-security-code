@@ -591,3 +591,80 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         agent.stop()
         print("\nAgent stopped by user")
+
+
+import os
+import subprocess
+from datetime import datetime
+
+def generate_dashboard():
+    # 1. Define the tools you want to check
+    security_tools = {
+        "ClamAV (Antivirus)": "clamscan",
+        "Fail2ban (Brute force)": "fail2ban-server",
+        "UFW (Firewall)": "ufw",
+        "AppArmor": "aa-status"
+    }
+    
+    # 2. HTML Template (Modern, clean dashboard style)
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>ASND Security Dashboard</title>
+        <style>
+            body {{ font-family: monospace; background: #0d1117; color: #c9d1d9; padding: 20px; }}
+            h1 {{ color: #58a6ff; }}
+            .container {{ max-width: 800px; margin: auto; background: #161b22; padding: 20px; border-radius: 10px; }}
+            table {{ width: 100%; border-collapse: collapse; }}
+            th {{ text-align: left; padding: 10px; background: #21262d; }}
+            td {{ padding: 10px; border-bottom: 1px solid #30363d; }}
+            .installed {{ color: #2ea043; font-weight: bold; }}
+            .missing {{ color: #f85149; font-weight: bold; }}
+            .footer {{ margin-top: 20px; font-size: 0.8em; color: #8b949e; }}
+        </style>
+    </head>
+    <body>
+    <div class="container">
+        <h1>🛡️ ASND - Endpoint Security Report</h1>
+        <p>Host: <strong>{os.uname().nodename}</strong> | IP: {subprocess.getoutput("hostname -I")}</p>
+        <p>Last Scan: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+        <table>
+            <tr><th>Security Tool</th><th>Status</th><th>Action</th></tr>
+    """
+    
+    # 3. The logic to check each tool
+    for tool_name, command in security_tools.items():
+        # Check if binary exists OR if service is active
+        check = subprocess.run(["which", command], capture_output=True, text=True)
+        if check.returncode == 0:
+            status_html = '<span class="installed">✅ INSTALLED</span>'
+            action = "Monitoring Active"
+        else:
+            status_html = '<span class="missing">❌ MISSING</span>'
+            action = f'<a href="https://ubuntu.com/server/docs/security-{tool_name.split()[0].lower()}" target="_blank">Install Guide</a>'
+        
+        html_content += f"""
+            <tr>
+                <td>{tool_name}</td>
+                <td>{status_html}</td>
+                <td>{action}</td>
+            </tr>
+        """
+    
+    html_content += """
+        </table>
+        <div class="footer">
+            <p>⚠️ Note: This is an automated report by the ASND Security Agent.</p>
+            <p>If a tool is missing, please install it using <code>sudo apt install &lt;toolname&gt;</code></p>
+        </div>
+    </div>
+    </body>
+    </html>
+    """
+    
+    # 4. Save the dashboard to a file
+    with open("/var/www/html/dashboard.html", "w") as f:
+        f.write(html_content)
+    
+    print("[+] Dashboard generated at /var/www/html/dashboard.html")
