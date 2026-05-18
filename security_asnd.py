@@ -229,6 +229,8 @@ class SecurityToolMonitor:
     def check_tools(self) -> List[str]:
         """Check if required security tools are running"""
         alerts = []
+def main():
+generate_dashboard()
         def get_dashboard_status(self) -> Dict:
         """Generate dashboard data for IT manager"""
         return {
@@ -253,6 +255,8 @@ class SecurityToolMonitor:
                     if today in line:
                         count += 1
         return count
+    if __name__ == "__main__":
+    main()
 
 # ------------------ LOG MONITOR (REAL-TIME) ------------------
 class LogMonitor:
