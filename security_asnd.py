@@ -229,156 +229,7 @@ class SecurityToolMonitor:
     def check_tools(self) -> List[str]:
         """Check if required security tools are running"""
         alerts = []
-        
-        if self.system == "Linux":
-            for tool in CONFIG['security_tools']['linux']:
-                if not self._check_process(tool):
-                    alerts.append(f"SECURITY TOOL MISSING: {tool} is not running")
-                    
-        elif self.system == "Windows":
-            for tool in CONFIG['security_tools']['windows']:
-                if not self._check_windows_service(tool):
-                    alerts.append(f"SECURITY TOOL MISSING: {tool} is not running")
-                    
-        return alerts
-    
-    def _check_process(self, process_name: str) -> bool:
-        """Check if a Linux process is running"""
-        try:
-            result = subprocess.run(
-                ["pgrep", "-x", process_name],
-                capture_output=True,
-                text=True
-            )
-            return result.returncode == 0
-        except:
-            return False
-    
-    def _check_windows_service(self, service_name: str) -> bool:
-        """Check if a Windows service is running"""
-        try:
-            result = subprocess.run(
-                ["sc", "query", service_name],
-                capture_output=True,
-                text=True
-            )
-            return "RUNNING" in result.stdout
-        except:
-            return False
-            
-    def auto_remediate(self, tool_name: str) -> bool:
-        """Attempt to restart a stopped security tool"""
-        logging.info(f"Attempting to restart {tool_name}")
-        
-        if self.system == "Linux":
-            try:
-                subprocess.run(["sudo", "systemctl", "start", tool_name], 
-                             capture_output=True, check=True)
-                return True
-            except:
-                return False
-        return False
-
-# ------------------ NETWORK DISCOVERY ------------------
-class NetworkDiscovery:
-    """Discover new devices on the network"""
-    
-    def __init__(self):
-        self.known_hosts = self._load_known_hosts()
-        self.network_base = self._get_network_base()
-        
-    def _get_network_base(self) -> str:
-        """Get local network base (e.g., 192.168.1.0/24)"""
-        try:
-            # Get primary IP and determine network
-            host_ip = socket.gethostbyname(socket.gethostname())
-            parts = host_ip.split('.')
-            return f"{parts[0]}.{parts[1]}.{parts[2]}.0/24"
-        except:
-            return "192.168.1.0/24"
-    
-    def _load_known_hosts(self) -> Dict:
-        """Load list of known hosts from file"""
-        known_file = f"/var/lib/asnd/known_hosts_{HOST_ID}.json"
-        if os.path.exists(known_file):
-            try:
-                with open(known_file, 'r') as f:
-                    return json.load(f)
-            except:
-                return {}
-        return {}
-    
-    def _save_known_hosts(self):
-        known_file = f"/var/lib/asnd/known_hosts_{HOST_ID}.json"
-        os.makedirs(os.path.dirname(known_file), exist_ok=True)
-        with open(known_file, 'w') as f:
-            json.dump(self.known_hosts, f, indent=2)
-    
-    def scan_network(self) -> List[str]:
-        """Scan network for new devices"""
-        new_devices = []
-        
-        # Simple ping sweep (use nmap if available for better results)
-        base_ip = ".".join(self.network_base.split('.')[:3])
-        
-        for i in range(1, 255):
-            ip = f"{base_ip}.{i}"
-            if ip == HOST_IP:
-                continue
-                
-            # Ping test
-            response = subprocess.run(
-                ["ping", "-c", "1", "-W", "1", ip],
-                capture_output=True,
-                text=True
-            )
-            
-            if response.returncode == 0:
-                if ip not in self.known_hosts:
-                    new_devices.append(ip)
-                    self.known_hosts[ip] = {
-                        "first_seen": datetime.now().isoformat(),
-                        "status": "new"
-                    }
-        
-        self._save_known_hosts()
-        return new_devices
-
-# ------------------ DEPLOYMENT MANAGER ------------------
-class DeploymentManager:
-    """Manage deployment of security software to new hosts"""
-    
-    def __init__(self, notifier: SlackNotifier):
-        self.notifier = notifier
-        self.deployment_queue = []
-        
-    def deploy_to_host(self, host_ip: str) -> bool:
-        """Deploy security agent to a new host"""
-        logging.info(f"Deploying security agent to {host_ip}")
-        
-        # This would use SSH (Linux) or WinRM (Windows) to install
-        # For demonstration, we'll log and notify
-        
-        self.notifier.send(
-            f"New device detected: {host_ip}. Security software deployment initiated.",
-            "MEDIUM",
-            "auto_deploy"
-        )
-        
-        # Actual deployment logic would go here:
-        # - Copy agent script to remote host
-        # - Install dependencies
-        # - Start agent as service
-        
-        return True
-    
-    def verify_deployment(self, host_ip: str) -> bool:
-        """Verify that security software is installed on a host"""
-        # Check if agent is responding
-        # This would query the remote host's API endpoint
-        return False
-    
-    def get_dashboard_status(self) -> Dict:
+        def get_dashboard_status(self) -> Dict:
         """Generate dashboard data for IT manager"""
         return {
             "total_hosts": len(self.discovery.known_hosts),
@@ -592,7 +443,6 @@ if __name__ == "__main__":
         agent.stop()
         print("\nAgent stopped by user")
 
-
 import os
 import subprocess
 from datetime import datetime
@@ -668,3 +518,151 @@ def generate_dashboard():
         f.write(html_content)
     
     print("[+] Dashboard generated at /var/www/html/dashboard.html")
+
+        if self.system == "Linux":
+            for tool in CONFIG['security_tools']['linux']:
+                if not self._check_process(tool):
+                    alerts.append(f"SECURITY TOOL MISSING: {tool} is not running")
+                    
+        elif self.system == "Windows":
+            for tool in CONFIG['security_tools']['windows']:
+                if not self._check_windows_service(tool):
+                    alerts.append(f"SECURITY TOOL MISSING: {tool} is not running")
+                    
+        return alerts
+    
+    def _check_process(self, process_name: str) -> bool:
+        """Check if a Linux process is running"""
+        try:
+            result = subprocess.run(
+                ["pgrep", "-x", process_name],
+                capture_output=True,
+                text=True
+            )
+            return result.returncode == 0
+        except:
+            return False
+    
+    def _check_windows_service(self, service_name: str) -> bool:
+        """Check if a Windows service is running"""
+        try:
+            result = subprocess.run(
+                ["sc", "query", service_name],
+                capture_output=True,
+                text=True
+            )
+            return "RUNNING" in result.stdout
+        except:
+            return False
+            
+    def auto_remediate(self, tool_name: str) -> bool:
+        """Attempt to restart a stopped security tool"""
+        logging.info(f"Attempting to restart {tool_name}")
+        
+        if self.system == "Linux":
+            try:
+                subprocess.run(["sudo", "systemctl", "start", tool_name], 
+                             capture_output=True, check=True)
+                return True
+            except:
+                return False
+        return False
+
+# ------------------ NETWORK DISCOVERY ------------------
+class NetworkDiscovery:
+    """Discover new devices on the network"""
+    
+    def __init__(self):
+        self.known_hosts = self._load_known_hosts()
+        self.network_base = self._get_network_base()
+        
+    def _get_network_base(self) -> str:
+        """Get local network base (e.g., 192.168.1.0/24)"""
+        try:
+            # Get primary IP and determine network
+            host_ip = socket.gethostbyname(socket.gethostname())
+            parts = host_ip.split('.')
+            return f"{parts[0]}.{parts[1]}.{parts[2]}.0/24"
+        except:
+            return "192.168.1.0/24"
+    
+    def _load_known_hosts(self) -> Dict:
+        """Load list of known hosts from file"""
+        known_file = f"/var/lib/asnd/known_hosts_{HOST_ID}.json"
+        if os.path.exists(known_file):
+            try:
+                with open(known_file, 'r') as f:
+                    return json.load(f)
+            except:
+                return {}
+        return {}
+    
+    def _save_known_hosts(self):
+        known_file = f"/var/lib/asnd/known_hosts_{HOST_ID}.json"
+        os.makedirs(os.path.dirname(known_file), exist_ok=True)
+        with open(known_file, 'w') as f:
+            json.dump(self.known_hosts, f, indent=2)
+    
+    def scan_network(self) -> List[str]:
+        """Scan network for new devices"""
+        new_devices = []
+        
+        # Simple ping sweep (use nmap if available for better results)
+        base_ip = ".".join(self.network_base.split('.')[:3])
+        
+        for i in range(1, 255):
+            ip = f"{base_ip}.{i}"
+            if ip == HOST_IP:
+                continue
+                
+            # Ping test
+            response = subprocess.run(
+                ["ping", "-c", "1", "-W", "1", ip],
+                capture_output=True,
+                text=True
+            )
+            
+            if response.returncode == 0:
+                if ip not in self.known_hosts:
+                    new_devices.append(ip)
+                    self.known_hosts[ip] = {
+                        "first_seen": datetime.now().isoformat(),
+                        "status": "new"
+                    }
+        
+        self._save_known_hosts()
+        return new_devices
+
+# ------------------ DEPLOYMENT MANAGER ------------------
+class DeploymentManager:
+    """Manage deployment of security software to new hosts"""
+    
+    def __init__(self, notifier: SlackNotifier):
+        self.notifier = notifier
+        self.deployment_queue = []
+        
+    def deploy_to_host(self, host_ip: str) -> bool:
+        """Deploy security agent to a new host"""
+        logging.info(f"Deploying security agent to {host_ip}")
+        
+        # This would use SSH (Linux) or WinRM (Windows) to install
+        # For demonstration, we'll log and notify
+        
+        self.notifier.send(
+            f"New device detected: {host_ip}. Security software deployment initiated.",
+            "MEDIUM",
+            "auto_deploy"
+        )
+        
+        # Actual deployment logic would go here:
+        # - Copy agent script to remote host
+        # - Install dependencies
+        # - Start agent as service
+        
+        return True
+    
+    def verify_deployment(self, host_ip: str) -> bool:
+        """Verify that security software is installed on a host"""
+        # Check if agent is responding
+        # This would query the remote host's API endpoint
+        return False
