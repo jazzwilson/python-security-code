@@ -1,5 +1,3 @@
-# Create a separate dashboard script
-cat > make_dashboard.py << 'EOF'
 import subprocess
 import os
 from datetime import datetime
